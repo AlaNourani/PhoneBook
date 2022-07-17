@@ -141,10 +141,11 @@ final class ContactStorage: ObservableObject {
         }
     }
     
-    func deleteContact(index: Int) {
-        let entity = savedContacts[index]
-        container.viewContext.delete(entity)
-        saveData()
+    func deleteContact(_ id: String) {
+        if let contact = fetchContact(id) {
+            container.viewContext.delete(contact)
+            saveData()
+        }
     }
     
     private func saveData() {

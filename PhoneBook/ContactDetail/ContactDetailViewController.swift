@@ -6,16 +6,32 @@
 //
 
 import UIKit
+import Combine
 
-class ContactDetailViewController: UITableViewController, ContactListInjector {
+final class ContactDetailViewController: UIViewController, ContactListInjector {
 
-    private var contact: ContactViewModel?
+    @IBOutlet private weak var tableView: UITableView!
+    @IBOutlet private weak var activityIndicator: UIActivityIndicatorView!
     
+    private var contact: ContactViewModel?
+    private var cancellables: Set<AnyCancellable> = []
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
         let editeButton = UIBarButtonItem(barButtonSystemItem: .edit, target: self, action: #selector(editeContact))
         self.navigationItem.rightBarButtonItem = editeButton
+        
+        self.activityIndicator.isHidden = true
+
+        contactListViewModel.$isDataReceived.sink { [weak self] isDataReceived in
+            self?.tableView.isUserInteractionEnabled = true
+            if isDataReceived == true {
+                self?.activityIndicator.stopAnimating()
+                self?.contactListViewModel.isDataReceived = false
+                self?.navigationController?.popViewController(animated: true)
+            }
+        }.store(in: &cancellables)
     }
     
     func setContact(_ contact: ContactViewModel) {
@@ -29,6 +45,10 @@ class ContactDetailViewController: UITableViewController, ContactListInjector {
             self.tableView.reloadData()
         }
     }
+}
+
+//MARK: - Actions
+extension ContactDetailViewController {
     @objc func editeContact() {
         guard let contact = contact else {
             return
@@ -38,10 +58,51 @@ class ContactDetailViewController: UITableViewController, ContactListInjector {
         viewController.setContact(contact)
         self.navigationController?.pushViewController(viewController, animated: true)
     }
+}
+
+
+//MARK: - UITableViewDataSource
+extension ContactDetailViewController: UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        guard let contact = contact else { return 0 }
+        if contact.notes != nil {
+            return ContactProperties.allCases.count
+        } else {
+            return ContactProperties.allCases.count - 1
+        }
+    }
     
-    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if indexPath.row == 0 {
+            return pictureCell(indexPath)
+        } else if indexPath.row == tableView.numberOfRows(inSection: 0) - 1 {
+            return deleteCell(indexPath)
+        } else {
+            return infoCell(indexPath)
+        }
+    }
+}
+
+//MARK: - UITableViewDelegate
+extension ContactDetailViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        if indexPath.row == 0 {
+            return 330
+        } else if let contact = contact, contact.notes != nil, indexPath.row == ContactProperties.allCases.count - 2 {
+            return contact.notes!.height(withConstrainedWidth: self.tableView.bounds.width - 50, font: UIFont.systemFont(ofSize: 17)) + 50
+        } else if indexPath.row == tableView.numberOfRows(inSection: 0) - 1 {
+            return 100
+        } else {
+            return 75
+        }
+    }
+}
+
+
+//MARK: - TableViewCells
+extension ContactDetailViewController {
     private func pictureCell(_ indexPath: IndexPath) -> ContactDetailPictureCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: contactDetailPictureCell, for: indexPath) as! ContactDetailPictureCell
+        let cell = tableView.dequeueReusableCell(withIdentifier: contactDetailPictureCellIdetifier, for: indexPath) as! ContactDetailPictureCell
         if let contact = contact {
             cell.configure(name: contact.getFullName(), image: contact.getImage())
         }
@@ -49,51 +110,35 @@ class ContactDetailViewController: UITableViewController, ContactListInjector {
     }
     
     private func infoCell(_ indexPath: IndexPath) -> ContactDetailInfoCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: contactDetailInfoCell, for: indexPath) as! ContactDetailInfoCell
+        let cell = tableView.dequeueReusableCell(withIdentifier: contactDetailInfoCellIdentifier, for: indexPath) as! ContactDetailInfoCell
         if let contact = contact {
             var value: String = ""
-            var title: String = ""
             if indexPath.row == 1 {
                 value = contact.phoneNumber
-                title = ContactProperties.phoneNumber.title
             } else if indexPath.row == 2 {
                 value = contact.emailAddress
-                title = ContactProperties.email.title
             } else if indexPath.row == 3 {
                 value = contact.notes ?? ""
-                title = ContactProperties.notes.rawValue
             }
-            cell.configure(title: ContactProperties.allCases[indexPath.row + 1].rawValue, value: value)
+            cell.configure(title: ContactProperties.allCases[indexPath.row + 1].title, value: value)
         }
+        return cell
+    }
+    
+    private func deleteCell(_ indexPath: IndexPath) -> DeleteContactCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: deleteContactCellIdentifier) as! DeleteContactCell
+        cell.delegate = self
         return cell
     }
 }
 
-extension ContactDetailViewController {
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        guard let contact = contact else { return 0 }
-        if contact.notes != nil {
-            return ContactProperties.allCases.count - 1
-        } else {
-            return ContactProperties.allCases.count - 2
-        }
-    }
-    
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if indexPath.row == 0 {
-            return pictureCell(indexPath)
-        } else {
-            return infoCell(indexPath)
-        }
-    }
-    
-    override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        if indexPath.row == 0 {
-            return 330
-        } else if let contact = contact, contact.notes != nil, indexPath.row == ContactProperties.allCases.count - 1 {
-            return contact.notes!.height(withConstrainedWidth: self.tableView.bounds.width - 50, font: UIFont.systemFont(ofSize: 17))
-        } else {
-            return 80
-        }
+
+extension ContactDetailViewController: DeleteContactCellProtocol {
+    func deleteContact() {
+        guard let contact = contact else { return }
+        activityIndicator.isHidden = false
+        activityIndicator.startAnimating()
+        tableView.isUserInteractionEnabled = false
+        contactListViewModel.deleteContact(contact.id)
     }
 }

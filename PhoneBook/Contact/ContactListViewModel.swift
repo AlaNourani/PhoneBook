@@ -26,51 +26,14 @@ class ContactListViewModel {
     @Published private(set) var contactViewModels: [ContactViewModel] = []
     @Published var isDataChanged = false
     @Published var isDataReceived = false
-    fileprivate let networkController: NetworkControllerProtocol
+    private let contactService = ContactService()
     private let contactStorage = ContactStorage()
     private var cancellables: Set<AnyCancellable> = []
     
     init() {
-        self.networkController = NetworkController()
         contactStorage.fetchContacts()
         contactStorage.$savedContacts.sink { [weak self] contactsArray in
             self?.contactViewModels = contactsArray.map{ ContactViewModel($0) }
-            self?.isDataChanged.toggle()
-        }.store(in: &cancellables)
-    }
-    
-    func getContacts() {
-        getContactsFromServer().sink { result in
-            switch result {
-            case .finished:
-                print("Finished")
-            case .failure(let error):
-                print("Error. \(error)")
-            }
-        } receiveValue: { [weak self] contacts in
-            self?.contactStorage.syncContacts(contacts)
-            self?.isDataChanged.toggle()
-        }.store(in: &cancellables)
-
-    }
-    
-    func addNewContact(_ contact: ContactViewModel) {
-        addContactToServer(contact)
-            .sink { [weak self] result in
-                self?.isDataReceived = true
-        } receiveValue: {[weak self] newContact in
-            self?.contactStorage.addContact(contact)
-            self?.contactViewModels.append(newContact)
-            self?.isDataChanged.toggle()
-        }.store(in: &cancellables)
-    }
-    
-    func updateContact(_ contact: ContactViewModel) {
-        updateContactToServer(contact)
-            .sink { [weak self] result in
-                self?.isDataReceived = true
-        } receiveValue: {[weak self] updatedContact in
-            self?.contactStorage.updateContact(updatedContact)
             self?.isDataChanged.toggle()
         }.store(in: &cancellables)
     }
@@ -91,19 +54,50 @@ class ContactListViewModel {
 }
 
 extension ContactListViewModel {
-    private func getContactsFromServer() -> AnyPublisher<[ContactViewModel], APIError> {
-        let url = URL(string: Constants.getContactsURL())!
-        return networkController.get(type: [ContactViewModel].self, url: url)
+    func getContacts() {
+        contactService.getContactsFromServer().sink { result in
+            switch result {
+            case .finished:
+                print("Finished")
+            case .failure(let error):
+                print("Error. \(error)")
+            }
+        } receiveValue: { [weak self] contacts in
+            self?.contactStorage.syncContacts(contacts)
+            self?.isDataChanged.toggle()
+        }.store(in: &cancellables)
+
     }
     
-    private func addContactToServer(_ contact: ContactViewModel) -> AnyPublisher<ContactViewModel, APIError> {
-        let url = URL(string: Constants.getContactsURL())!
-       return networkController.post(type: ContactViewModel.self, url: url, payload: contact)
+    func addNewContact(_ contact: ContactViewModel) {
+        contactService.addContactToServer(contact)
+            .sink { [weak self] result in
+                self?.isDataReceived = true
+        } receiveValue: {[weak self] newContact in
+            self?.contactStorage.addContact(contact)
+            self?.contactViewModels.append(newContact)
+            self?.isDataChanged.toggle()
+        }.store(in: &cancellables)
     }
     
-    private func updateContactToServer(_ contact: ContactViewModel) -> AnyPublisher<ContactViewModel, APIError> {
-        let urlString = Constants.getContactsURL()
-        let url = URL(string: urlString + "/" + contact.id)!
-        return networkController.put(type: ContactViewModel.self, url: url, payload: contact)
+    func updateContact(_ contact: ContactViewModel) {
+        contactService.updateContactToServer(contact)
+            .sink { [weak self] result in
+                self?.isDataReceived = true
+        } receiveValue: {[weak self] updatedContact in
+            self?.contactStorage.updateContact(updatedContact)
+            self?.isDataChanged.toggle()
+        }.store(in: &cancellables)
+    }
+    
+    func deleteContact(_ id: String) {
+        contactService.deleteContact(id)
+            .sink { [weak self] result in
+                self?.isDataReceived = true
+            } receiveValue: { [weak self] value in
+                self?.contactStorage.deleteContact(id)
+            }
+            .store(in: &cancellables)
+
     }
 }

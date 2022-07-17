@@ -13,6 +13,11 @@ final class ContactListCell: UITableViewCell {
     @IBOutlet weak var nameLabel: UILabel!
     @IBOutlet private weak var phoneNumberLabel: UILabel!
     
+    override func prepareForReuse() {
+        contactImage.image = UIImage(systemName: "person.crop.circle")
+        nameLabel.text = ""
+        phoneNumberLabel.text = ""
+    }
     
     func configure(_ contact: ContactViewModel) {
         contactImage.layer.cornerRadius = contactImage.bounds.width / 2

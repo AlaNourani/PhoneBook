@@ -56,8 +56,8 @@ final class NewContactViewController: UIViewController, ContactListInjector {
             self?.tableView.isUserInteractionEnabled = true
             if isDataReceived == true {
                 self?.activityIndicator.stopAnimating()
-                self?.navigationController?.popViewController(animated: true)
                 self?.contactListViewModel.isDataReceived = false
+                self?.navigationController?.popViewController(animated: true)
             }
         }.store(in: &cancellables)
     }
@@ -100,7 +100,7 @@ final class NewContactViewController: UIViewController, ContactListInjector {
     }
     
     private func noteCell() -> NewContactNoteCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: newContactNoteCell) as! NewContactNoteCell
+        let cell = tableView.dequeueReusableCell(withIdentifier: newContactNoteCellIdentifier) as! NewContactNoteCell
         cell.configure(contact != nil ? contact!.notes : nil)
         cell.delegate = self
         return cell
