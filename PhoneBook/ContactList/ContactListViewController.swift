@@ -10,12 +10,14 @@ import Combine
 
 final class ContactListViewController: UITableViewController, ContactListInjector {
 
+    @IBOutlet private weak var searchBar: UISearchBar!
+
     private var cancellables: Set<AnyCancellable> = []
-    
     
     override func viewDidLoad() {
         super.viewDidLoad()
             
+        searchBar.delegate = self
         setupContacts()
     }
     
@@ -23,13 +25,38 @@ final class ContactListViewController: UITableViewController, ContactListInjecto
         contactListViewModel.getContacts()
         contactListViewModel.$isDataChanged.sink { [weak self] _ in
             DispatchQueue.main.async {
+                self?.cancelSearching()
                 self?.tableView.reloadData()
             }
         }
         .store(in: &cancellables)
-
+    }
+    
+    private func cancelSearching() {
+        searchBar.showsCancelButton = false
+        searchBar.resignFirstResponder()
+        searchBar.text = ""
+        contactListViewModel.filterContacts(with: "")
     }
 }
+
+//MARK: - SearchBarDelegate
+extension ContactListViewController: UISearchBarDelegate {
+    func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
+        searchBar.showsCancelButton = true
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        contactListViewModel.filterContacts(with: searchText)
+        tableView.reloadData()
+    }
+    
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        cancelSearching()
+        tableView.reloadData()
+    }
+}
+
 
 //MARK: - DataSource
 extension ContactListViewController {

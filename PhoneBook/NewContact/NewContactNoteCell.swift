@@ -26,7 +26,6 @@ final class NewContactNoteCell: UITableViewCell {
             placeholderLabel.isHidden = true
         }
         
-        textView.delegate = self
         textView.layer.cornerRadius = 10
         textView.layer.borderColor = UIColor.lightGray.withAlphaComponent(0.8).cgColor
         textView.layer.borderWidth = 0.5

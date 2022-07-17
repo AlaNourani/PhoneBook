@@ -106,7 +106,9 @@ final class ContactStorage: ObservableObject {
                     contact.emailAddress = data.emailAddress
                     contact.notes = data.notes
                     contact.imageLinks = data.imageLinks
-                    contact.id = data.id
+                    if let id = data.id {
+                        contact.id = id
+                    }
                 }
                 
                 index += 1
@@ -129,7 +131,7 @@ final class ContactStorage: ObservableObject {
     }
     
     func updateContact(_ updatedContact: ContactViewModel) {
-        if let contact = fetchContact(updatedContact.id) {
+        if let id = updatedContact.id, let contact = fetchContact(id) {
             contact.name = updatedContact.name
             contact.surname = updatedContact.surname
             contact.phoneNumber = updatedContact.phoneNumber

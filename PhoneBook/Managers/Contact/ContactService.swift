@@ -22,7 +22,8 @@ final class ContactService: NetworkManager {
     
     func updateContactToServer(_ contact: ContactViewModel) -> AnyPublisher<ContactViewModel, APIError> {
         let urlString = Constants.getContactsURL()
-        let url = URL(string: urlString + "/" + contact.id)!
+        let id = contact.id ?? ""
+        let url = URL(string: urlString + "/" + id)!
         return put(type: ContactViewModel.self, url: url, payload: contact)
     }
     

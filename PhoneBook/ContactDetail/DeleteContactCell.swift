@@ -12,7 +12,7 @@ protocol DeleteContactCellProtocol: AnyObject {
 }
 
 
-class DeleteContactCell: UITableViewCell {
+final class DeleteContactCell: UITableViewCell {
         
     weak var delegate: DeleteContactCellProtocol?
 

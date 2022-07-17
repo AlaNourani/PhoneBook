@@ -8,8 +8,13 @@
 import UIKit
 
 struct Alerts {
-    static func showActionSheet(viewController: UIViewController, actions: [(String, UIAlertAction.Style)], completion: @escaping (_ index: Int) -> Void) {
-        Alerts.showActionSheet(viewController: viewController, title: nil, message: nil, actions: actions, completion: completion)
+    static func showAlert(viewController: UIViewController, title: String?, message: String?, completion: @escaping() -> Void) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let okAction = UIAlertAction(title: "Ok", style: .default) { _ in
+            completion()
+        }
+        alert.addAction(okAction)
+        viewController.present(alert, animated: true, completion: nil)
     }
     
     static func showActionSheet(viewController: UIViewController, title: String?, message: String?, actions: [(String, UIAlertAction.Style)], completion: @escaping (_ index: Int) -> Void) {

@@ -23,15 +23,7 @@ final class ContactDetailViewController: UIViewController, ContactListInjector {
         self.navigationItem.rightBarButtonItem = editeButton
         
         self.activityIndicator.isHidden = true
-
-        contactListViewModel.$isDataReceived.sink { [weak self] isDataReceived in
-            self?.tableView.isUserInteractionEnabled = true
-            if isDataReceived == true {
-                self?.activityIndicator.stopAnimating()
-                self?.contactListViewModel.isDataReceived = false
-                self?.navigationController?.popViewController(animated: true)
-            }
-        }.store(in: &cancellables)
+        self.title = "Contact Info"
     }
     
     func setContact(_ contact: ContactViewModel) {
@@ -40,10 +32,15 @@ final class ContactDetailViewController: UIViewController, ContactListInjector {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        if self.contact != nil {
-            self.contact = contactListViewModel.contact(with: contact!.id)
+        if self.contact != nil, let id = contact?.id {
+            self.contact = contactListViewModel.contact(with: id)
             self.tableView.reloadData()
         }
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        cancellables.removeAll()
     }
 }
 
@@ -135,10 +132,28 @@ extension ContactDetailViewController {
 
 extension ContactDetailViewController: DeleteContactCellProtocol {
     func deleteContact() {
-        guard let contact = contact else { return }
+        guard let contact = contact, let id = contact.id else { return }
         activityIndicator.isHidden = false
         activityIndicator.startAnimating()
         tableView.isUserInteractionEnabled = false
-        contactListViewModel.deleteContact(contact.id)
+        contactListViewModel.deleteContact(id)
+        
+        contactListViewModel.$isDataReceived.sink { [weak self] isDataReceived in
+            guard let self = self else { return }
+
+            if isDataReceived == true {
+                self.tableView.isUserInteractionEnabled = true
+                self.activityIndicator.stopAnimating()
+                self.activityIndicator.isHidden = true
+                self.contactListViewModel.isDataReceived = false
+                if let errorMessage = self.contactListViewModel.deleteContactErrorMessage {
+                    Alerts.showAlert(viewController: self, title: nil, message: errorMessage) {
+                        //
+                    }
+                } else {
+                    self.navigationController?.popViewController(animated: true)
+                }
+            }
+        }.store(in: &cancellables)
     }
 }

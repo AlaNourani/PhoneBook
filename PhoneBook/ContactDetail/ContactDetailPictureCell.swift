@@ -7,7 +7,7 @@
 
 import UIKit
 
-class ContactDetailPictureCell: UITableViewCell {
+final class ContactDetailPictureCell: UITableViewCell {
 
     @IBOutlet private weak var pictureView: UIButton!
     @IBOutlet private weak var nameLable: UILabel!

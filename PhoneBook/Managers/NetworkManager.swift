@@ -167,7 +167,7 @@ class NetworkManager: NetworkManagerProtocol {
                 if let response = response as? HTTPURLResponse {
                     if (200...299).contains(response.statusCode) {
                         return Just(true)
-                            .mapError {_ in .decodingError}
+                            .mapError { _ in .decodingError}
                             .eraseToAnyPublisher()
                     } else {
                         return Fail(error: APIError.httpError(response.statusCode))

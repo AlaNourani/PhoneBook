@@ -15,7 +15,7 @@ struct ContactViewModel: Codable {
     private(set) var emailAddress: String
     private(set) var notes: String?
     private(set) var imageLinks: [String]?
-    private(set) var id: String
+    private(set) var id: String?
     
     enum CodingKeys: String, CodingKey {
         case id = "_id"
@@ -39,36 +39,20 @@ extension ContactViewModel {
         self.id = contact.id
     }
     
-    init(name: String, surname: String, phoneNumber: String, emailAddress: String, notes: String, imageLinks: [String]? = nil, id: String = "") {
+    init(name: String, surname: String, phoneNumber: String, emailAddress: String, notes: String, imageLinks: [String]? = nil, id: String?) {
         self.name = name
         self.surname = surname
         self.phoneNumber = phoneNumber
         self.emailAddress = emailAddress
         self.notes = notes
         self.imageLinks = imageLinks
-        self.id = id
-    }
-    
-    func valueForProperty(_ key: ContactProperties) -> String? {
-        switch key {
-        case .name:
-            return self.name
-        case .surname:
-            return self.surname
-        case .phoneNumber:
-            return self.phoneNumber
-        case .email:
-            return self.emailAddress
-        case .notes:
-            return self.notes
+        if let id = id {
+            self.id = id
         }
     }
-    
-    
-    func saveData() {
-//        ContactStorage().addContact(self)
-    }
-    
+}
+
+extension ContactViewModel {
     func getFullName() -> String {
         return name + " " + surname
     }
@@ -84,7 +68,7 @@ extension ContactViewModel {
 }
 
 
-class ContactBuilder {
+final class ContactBuilder {
     private(set) var id: String!
     @Published private(set) var name: String?
     @Published private(set) var surname: String?
@@ -221,6 +205,21 @@ class ContactBuilder {
             return ContactViewModel(name: name!, surname: surname!, phoneNumber: phoneNumber!, emailAddress: emailAddress!, notes: notes!, imageLinks: image, id: id)
         } else {
             return nil
+        }
+    }
+    
+    func valueForProperty(_ key: ContactProperties) -> String? {
+        switch key {
+        case .name:
+            return self.name
+        case .surname:
+            return self.surname
+        case .phoneNumber:
+            return self.phoneNumber
+        case .email:
+            return self.emailAddress
+        case .notes:
+            return self.notes
         }
     }
 }

@@ -51,15 +51,6 @@ final class NewContactViewController: UIViewController, ContactListInjector {
         self.activityIndicator.isHidden = true
         tableView.dataSource = self
         tableView.delegate = self
-        
-        contactListViewModel.$isDataReceived.sink { [weak self] isDataReceived in
-            self?.tableView.isUserInteractionEnabled = true
-            if isDataReceived == true {
-                self?.activityIndicator.stopAnimating()
-                self?.contactListViewModel.isDataReceived = false
-                self?.navigationController?.popViewController(animated: true)
-            }
-        }.store(in: &cancellables)
     }
     
     func setContact(_ contact: ContactViewModel) {
@@ -83,12 +74,7 @@ final class NewContactViewController: UIViewController, ContactListInjector {
         cell.delegate = self
         if index <= ContactProperties.allCases.count {
             let property = ContactProperties.allCases[index - 1]
-            
-            var value: String?
-            if let contact = contact {
-                value = contact.valueForProperty(property)
-            }
-            cell.configure(property: property, value: value)
+            cell.configure(property: property, value: contactBuilder.valueForProperty(property))
         }
         return cell
     }
@@ -104,6 +90,22 @@ final class NewContactViewController: UIViewController, ContactListInjector {
         cell.configure(contact != nil ? contact!.notes : nil)
         cell.delegate = self
         return cell
+    }
+    
+    private func showErrorMessage() {
+        var errorMessage: String?
+        if self.contact != nil {
+            errorMessage = self.contactListViewModel.updateContactErrorMessage
+        } else {
+            errorMessage = self.contactListViewModel.addContactErrorMessage
+        }
+        if let message = errorMessage {
+            Alerts.showAlert(viewController: self, title: nil, message: message) {
+                //
+            }
+        } else {
+            self.navigationController?.popViewController(animated: true)
+        }
     }
 }
 
@@ -143,7 +145,7 @@ extension NewContactViewController: UITableViewDelegate {
 
 
 extension NewContactViewController: NewContactInfoCellProtocol {
-    func textFieldDidEndEditing(_ cell: NewContactInfoCell) {
+    func textFieldValueSetted(_ cell: NewContactInfoCell) {
         let value = cell.dataString
         var errorMessage: String = ""
         
@@ -216,6 +218,17 @@ extension NewContactViewController: NewContactDoneCellProtocol {
             } else {
                 contactListViewModel.addNewContact(newContact)
             }
+            
+            contactListViewModel.$isDataReceived.sink { [weak self] isDataReceived in
+                guard let self = self else { return }
+                if isDataReceived == true {
+                    self.tableView.isUserInteractionEnabled = true
+                    self.activityIndicator.stopAnimating()
+                    self.activityIndicator.isHidden = true
+                    self.showErrorMessage()
+                }
+            }.store(in: &cancellables)
+            
         } else if !contactBuilder.notesErrorMessage.isEmpty {
             let indexPath = IndexPath(row: ContactProperties.allCases.count, section: 0)
             if let cell = self.tableView.cellForRow(at: indexPath) as? NewContactNoteCell {

@@ -7,7 +7,7 @@
 
 import UIKit
 
-class ContactDetailInfoCell: UITableViewCell {
+final class ContactDetailInfoCell: UITableViewCell {
     @IBOutlet private weak var titleLabel: UILabel!
     @IBOutlet private weak var valueLabel: UILabel!
     

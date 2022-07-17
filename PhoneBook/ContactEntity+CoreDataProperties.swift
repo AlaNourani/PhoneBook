@@ -22,7 +22,7 @@ extension ContactEntity {
     @NSManaged public var emailAddress: String
     @NSManaged public var notes: String?
     @NSManaged public var imageLinks: [String]?
-    @NSManaged public var id: String
+    @NSManaged public var id: String?
 
 }
 

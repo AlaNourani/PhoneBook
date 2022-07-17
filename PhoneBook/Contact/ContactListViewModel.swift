@@ -21,30 +21,51 @@ extension ContactListInjector {
 }
 
 
-class ContactListViewModel {
+final class ContactListViewModel {
     
     @Published private(set) var contactViewModels: [ContactViewModel] = []
+    @Published private(set) var filteredContacViewModels: [ContactViewModel] = []
+    @Published var addContactErrorMessage: String?
+    @Published var updateContactErrorMessage: String?
+    @Published var deleteContactErrorMessage: String?
     @Published var isDataChanged = false
     @Published var isDataReceived = false
     private let contactService = ContactService()
     private let contactStorage = ContactStorage()
+    private var isSearching = false
+    private var searchText: String = ""
     private var cancellables: Set<AnyCancellable> = []
     
     init() {
         contactStorage.fetchContacts()
         contactStorage.$savedContacts.sink { [weak self] contactsArray in
-            self?.contactViewModels = contactsArray.map{ ContactViewModel($0) }
-            self?.isDataChanged.toggle()
+            guard let self = self else { return }
+            self.contactViewModels = contactsArray.map{ ContactViewModel($0) }
+            self.filterContacts(with: self.searchText)
+            self.isDataChanged.toggle()
         }.store(in: &cancellables)
+        
+    }
+    
+    func filterContacts(with searchText: String) {
+        isSearching = !searchText.isEmpty
+        if isSearching == true {
+            filteredContacViewModels = contactViewModels.filter {
+                return $0.name.lowercased().contains(searchText.lowercased()) ||
+                $0.surname.lowercased().contains(searchText.lowercased()) ||
+                $0.phoneNumber.contains(searchText)
+            }
+        }
     }
     
     func numberOfContacts() -> Int {
-        return contactViewModels.count
+        return isSearching ? filteredContacViewModels.count : contactViewModels.count
     }
     
     func contact(at index: Int) -> ContactViewModel? {
+        let contactsArray = isSearching ? filteredContacViewModels : contactViewModels
         guard (0..<numberOfContacts()).contains(index) else { return nil }
-        return contactViewModels[index]
+        return contactsArray[index]
     }
     
     func contact(with id: String) -> ContactViewModel? {
@@ -66,38 +87,56 @@ extension ContactListViewModel {
             self?.contactStorage.syncContacts(contacts)
             self?.isDataChanged.toggle()
         }.store(in: &cancellables)
-
+        
     }
     
     func addNewContact(_ contact: ContactViewModel) {
+        self.isDataReceived = false
         contactService.addContactToServer(contact)
             .sink { [weak self] result in
+                switch result {
+                case .finished:
+                    print("Adding contact finished.")
+                case .failure(let error):
+                    self?.addContactErrorMessage = error.localizedDescription
+                }
                 self?.isDataReceived = true
-        } receiveValue: {[weak self] newContact in
-            self?.contactStorage.addContact(contact)
-            self?.contactViewModels.append(newContact)
-            self?.isDataChanged.toggle()
-        }.store(in: &cancellables)
+            } receiveValue: {[weak self] newContact in
+                self?.contactStorage.addContact(newContact)
+            }.store(in: &cancellables)
     }
     
     func updateContact(_ contact: ContactViewModel) {
+        self.isDataReceived = false
         contactService.updateContactToServer(contact)
             .sink { [weak self] result in
+                switch result {
+                case .finished:
+                    print("Contact is updated.")
+                case .failure(_):
+                    self?.updateContactErrorMessage = "You can only update contacts that you created."
+                }
                 self?.isDataReceived = true
-        } receiveValue: {[weak self] updatedContact in
-            self?.contactStorage.updateContact(updatedContact)
-            self?.isDataChanged.toggle()
-        }.store(in: &cancellables)
+            } receiveValue: {[weak self] updatedContact in
+                self?.contactStorage.updateContact(updatedContact)
+                self?.isDataChanged.toggle()
+            }.store(in: &cancellables)
     }
     
     func deleteContact(_ id: String) {
+        self.isDataReceived = false
         contactService.deleteContact(id)
             .sink { [weak self] result in
+                switch result {
+                case .finished:
+                    print("Contact is deleted.")
+                case .failure(_):
+                    self?.deleteContactErrorMessage = "You can only delete contacts that you created."
+                }
                 self?.isDataReceived = true
             } receiveValue: { [weak self] value in
                 self?.contactStorage.deleteContact(id)
             }
             .store(in: &cancellables)
-
     }
 }
